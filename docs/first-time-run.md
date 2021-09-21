@@ -131,3 +131,12 @@ To grant permissions to pull images from specified registries by service account
 ```bash
 oc adm policy add-cluster-role-to-user self-provisioner -z pipeline -n <YOUR_NAMESPACE> 
 ```
+
+### Only Release pipeline:
+#### IBM webhook token
+The Release pipeline needs to call an IBM webhook to trigger marketplace replication. To
+authenticate with the webhook, a token is needed.
+
+```bash
+oc create secret generic ibm-webhook-token --from-literal ibm-webhook-token=< TOKEN >
+```

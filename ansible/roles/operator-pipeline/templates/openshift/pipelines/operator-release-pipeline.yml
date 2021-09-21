@@ -31,6 +31,7 @@ spec:
       optional: true
     - name: pyxis-ssl-credentials
     - name: github-bot-token
+    - name: ibm-webhook-token
   tasks:
     # Set environment
     - name: set-env
@@ -162,11 +163,33 @@ spec:
         - name: dist_method
           value: "$(tasks.get-cert-project-related-data.results.dist_method)"
         - name: image
-          value: "$(params.registry)/$(params.image_namespace)/$(tasks.operator-validation.results.package_name)-index:$(tasks.operator-validation.results.bundle_version)"
+          value: &bundleImage "$(params.registry)/$(params.image_namespace)/$(tasks.operator-validation.results.package_name)-index:$(tasks.operator-validation.results.bundle_version)"
         - name: is_latest
           value: "$(params.is_latest)"
         - name: bundle_version
           value: "$(tasks.operator-validation.results.bundle_version)"
+
+    # Trigger IBM webhook for marketplace replication
+    - name: trigger-marketplace-replication
+      runAfter:
+        - publish-to-ocp-registry
+        - get-supported-versions
+      taskRef:
+        name: trigger-marketplace-replication
+      params:
+        - name: bundle_image
+          value: *bundleImage
+        - name: bundle_image_digest
+          value: "$(tasks.publish-to-ocp-registry.results.container_digest)"
+        - name: package
+          value: "$(tasks.operator-validation.results.package_name)"
+        - name: ocp_version
+          value: "$(tasks.get-supported-versions.results.ocp_version)"
+        - name: version
+          value: "$(tasks.operator-validation.results.bundle_version)"
+      workspaces:
+        - name: ibm-webhook-token
+          workspace: ibm-webhook-token
 
     # create or update container image
     - name: update-container-image
@@ -218,6 +241,7 @@ spec:
       runAfter:
         - publish-resources
         - get-supported-versions
+        - trigger-marketplace-replication
       taskRef:
         name: publish-bundle
       params:
